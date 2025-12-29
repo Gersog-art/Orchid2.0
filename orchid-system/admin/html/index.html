@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Orchid Security Dashboard</title>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #0f172a; color: white; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .logo { font-size: 24px; font-weight: bold; color: #7c3aed; }
+        .status-badge { background: #10b981; padding: 5px 10px; border-radius: 20px; font-size: 14px; }
+        .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .card { background: #1e293b; border-radius: 10px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .card-title { color: #cbd5e1; margin-top: 0; }
+        .service-status { display: flex; align-items: center; margin: 10px 0; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 10px; }
+        .status-dot.healthy { background: #10b981; }
+        .status-dot.unhealthy { background: #ef4444; }
+        .status-dot.checking { background: #f59e0b; animation: pulse 1s infinite; }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        .attack-log { max-height: 300px; overflow-y: auto; }
+        .attack-item { background: #334155; margin: 5px 0; padding: 10px; border-radius: 5px; }
+        .attack-type { color: #ef4444; font-weight: bold; }
+        .btn { background: #7c3aed; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+        .btn:hover { background: #6d28d9; }
+        .connection-method { font-size: 12px; color: #94a3b8; margin-top: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">ORCHID SECURITY</div>
+            <div class="status-badge" id="system-status">INITIALIZING</div>
+        </div>
+        
+        <div class="dashboard-grid">
+            <div class="card">
+                <h3 class="card-title">ML Services Status</h3>
+                <div id="services-status">
+                    <div class="service-status">
+                        <div class="status-dot checking" id="iso-dot"></div>
+                        <span>Isolation Forest: <span id="iso-text">Checking...</span></span>
+                    </div>
+                    <div id="iso-method" class="connection-method"></div>
+                    
+                    <div class="service-status">
+                        <div class="status-dot checking" id="rf-dot"></div>
+                        <span>Random Forest: <span id="rf-text">Checking...</span></span>
+                    </div>
+                    <div id="rf-method" class="connection-method"></div>
+                </div>
+                <button class="btn" onclick="forceCheckServices()" style="margin-top: 10px;">Force Check</button>
+            </div>
+            
+            <div class="card">
+                <h3 class="card-title">Attack Detection</h3>
+                <div class="attack-log" id="attack-log">
+                    <div class="attack-item">
+                        <span class="attack-type">SYSTEM STARTED</span> - Dashboard initialized
+                        <br><small id="current-time">Loading...</small>
+                    </div>
+                </div>
+                <button class="btn" onclick="simulateAttack()" style="margin-top: 10px;">Simulate Attack</button>
+                <button class="btn" onclick="testMLServices()" style="margin-top: 10px; background: #3b82f6;">Test ML Services</button>
+            </div>
+            
+            <div class="card">
+                <h3 class="card-title">Quick Actions</h3>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <button class="btn" onclick="checkJuiceShop()">Check Juice Shop</button>
+                    <button class="btn" onclick="sendTestAttack()">Send Test Attack</button>
+                    <button class="btn" onclick="showConnectionInfo()">Connection Info</button>
+                    <button class="btn" onclick="clearLogs()" style="background: #ef4444;">Clear Logs</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card" style="margin-top: 20px;">
+            <h3 class="card-title">Attack Traffic Monitor</h3>
+            <div style="margin-bottom: 15px; display: flex; justify-content: space-between;">
+                <div>Live detection feed</div>
+                <div id="last-update">Last update: Never</div>
+            </div>
+            <table style="width:100%; border-collapse: collapse;" id="traffic-table">
+                <thead>
+                    <tr style="border-bottom: 1px solid #475569;">
+                        <th style="text-align:left; padding:10px;">Time</th>
+                        <th style="text-align:left; padding:10px;">Source IP</th>
+                        <th style="text-align:left; padding:10px;">Attack Type</th>
+                        <th style="text-align:left; padding:10px;">ML Detection</th>
+                        <th style="text-align:left; padding:10px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="traffic-body">
+                    <tr>
+                        <td colspan="5" style="text-align:center; padding:20px; color: #94a3b8;">
+                            Waiting for attack detection...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="card" style="margin-top: 20px; background: #1e3a8a;">
+            <h3 class="card-title">System Diagnostics</h3>
+            <div style="font-family: monospace; font-size: 12px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                    <div>
+                        <strong>Browser:</strong><br>
+                        <span id="browser-info">Loading...</span>
+                    </div>
+                    <div>
+                        <strong>Connection Mode:</strong><br>
+                        <span id="connection-mode">Detecting...</span>
+                    </div>
+                    <div>
+                        <strong>Services Detected:</strong><br>
+                        <span id="services-detected">0/2</span>
+                    </div>
+                </div>
+                
+                <div id="diagnostic-log" style="background: #0f172a; padding: 10px; margin-top: 10px; border-radius: 5px; max-height: 150px; overflow-y: auto; font-size: 11px;">
+                    <!-- Diagnostic logs will appear here -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Инициализация времени
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = now.toLocaleTimeString();
+            document.getElementById('last-update').textContent = `Last update: ${now.toLocaleTimeString()}`;
+        }
+        setInterval(updateTime, 1000);
+        updateTime();
+
+        // Логирование диагностики
+        function logDiag(message, type = 'info') {
+            const logDiv = document.getElementById('diagnostic-log');
+            const entry = document.createElement('div');
+            
+            const timestamp = new Date().toLocaleTimeString();
+            const icon = type === 'error' ? '❌' : type === 'success' ? '✅' : 'ℹ️';
+            const color = type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : '#3b82f6';
+            
+            entry.innerHTML = `<span style="color: ${color}">${icon} [${timestamp}] ${message}</span>`;
+            logDiv.prepend(entry);
+            
+            // Ограничиваем количество записей
+            while (logDiv.children.length > 10) {
+                logDiv.removeChild(logDiv.lastChild);
+            }
+            
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        // Обновление информации о браузере
+        document.getElementById('browser-info').textContent = 
+            navigator.userAgent.substring(0, 40) + (navigator.userAgent.length > 40 ? '...' : '');
+
+        // Проверка ML сервисов с несколькими методами
+        async function checkService(port, name) {
+            const directUrl = `http://localhost:${port}/health`;
+            const proxyUrl = `/api/proxy/${port}/health`;
+            
+            logDiag(`Checking ${name} service...`);
+            
+            // Метод 1: Прямой запрос (может не работать из-за CORS)
+            try {
+                const response = await fetch(directUrl, {
+                    method: 'GET',
+                    mode: 'cors',
+                    headers: { 'Accept': 'application/json' }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    logDiag(`${name}: Direct connection successful`, 'success');
+                    return { 
+                        success: true, 
+                        method: 'direct', 
+                        data: data,
+                        url: directUrl
+                    };
+                }
+            } catch (error) {
+                logDiag(`${name}: Direct connection failed (CORS?)`, 'error');
+            }
+            
+            // Метод 2: Через прокси (нужен прокси сервер)
+            try {
+                const response = await fetch(proxyUrl);
+                if (response.ok) {
+                    const data = await response.json();
+                    logDiag(`${name}: Proxy connection successful`, 'success');
+                    return { 
+                        success: true, 
+                        method: 'proxy', 
+                        data: data,
+                        url: proxyUrl
+                    };
+                }
+            } catch (error) {
+                logDiag(`${name}: Proxy connection also failed`, 'error');
+            }
+            
+            // Метод 3: Используем no-cors (только проверка доступности)
+            try {
+                const response = await fetch(directUrl, { mode: 'no-cors' });
+                if (response.type === 'opaque') {
+                    logDiag(`${name}: Service reachable but CORS blocked`, 'info');
+                    return { 
+                        success: true, 
+                        method: 'no-cors', 
+                        data: { status: 'reachable' },
+                        url: directUrl
+                    };
+                }
+            } catch (error) {
+                logDiag(`${name}: Service unreachable`, 'error');
+            }
+            
+            return { success: false, method: 'none', data: null, url: directUrl };
+        }
+
+        // Проверка всех сервисов
+        async function checkAllServices() {
+            logDiag('Starting service discovery...');
+            
+            const services = [
+                { port: 8001, name: 'Isolation Forest', dot: 'iso-dot', text: 'iso-text', method: 'iso-method' },
+                { port: 8002, name: 'Random Forest', dot: 'rf-dot', text: 'rf-text', method: 'rf-method' }
+            ];
+            
+            let healthyCount = 0;
+            
+            for (const service of services) {
+                // Устанавливаем статус "проверка"
+                document.getElementById(service.dot).className = 'status-dot checking';
+                document.getElementById(service.text).textContent = 'Checking...';
+                document.getElementById(service.text).style.color = '#f59e0b';
+                document.getElementById(service.method).textContent = '';
+                
+                const result = await checkService(service.port, service.name);
+                
+                if (result.success) {
+                    document.getElementById(service.dot).className = 'status-dot healthy';
+                    document.getElementById(service.text).textContent = '✓ Online';
+                    document.getElementById(service.text).style.color = '#10b981';
+                    document.getElementById(service.method).textContent = `via ${result.method}`;
+                    document.getElementById(service.method).style.color = '#94a3b8';
+                    healthyCount++;
+                    
+                    logDiag(`${service.name}: Healthy (${result.method})`, 'success');
+                } else {
+                    document.getElementById(service.dot).className = 'status-dot unhealthy';
+                    document.getElementById(service.text).textContent = '✗ Offline';
+                    document.getElementById(service.text).style.color = '#ef4444';
+                    logDiag(`${service.name}: Unreachable`, 'error');
+                }
+            }
+            
+            // Обновляем общий статус системы
+            document.getElementById('services-detected').textContent = `${healthyCount}/${services.length}`;
+            document.getElementById('connection-mode').textContent = healthyCount > 0 ? 'Mixed' : 'Disconnected';
+            
+            if (healthyCount === services.length) {
+                document.getElementById('system-status').textContent = 'OPERATIONAL';
+                document.getElementById('system-status').style.background = '#10b981';
+                logDiag('All services operational', 'success');
+            } else if (healthyCount > 0) {
+                document.getElementById('system-status').textContent = 'DEGRADED';
+                document.getElementById('system-status').style.background = '#f59e0b';
+                logDiag('Some services unavailable', 'info');
+            } else {
+                document.getElementById('system-status').textContent = 'OFFLINE';
+                document.getElementById('system-status').style.background = '#ef4444';
+                logDiag('All services offline', 'error');
+            }
+            
+            return healthyCount;
+        }
+
+        // Симуляция атаки
+        async function simulateAttack() {
+            const attackTypes = ['SQL Injection', 'XSS Attack', 'Brute Force', 'Path Traversal', 'CSRF'];
+            const randomAttack = attackTypes[Math.floor(Math.random() * attackTypes.length)];
+            const ip = `192.168.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`;
+            const time = new Date().toLocaleTimeString();
+            
+            // Добавляем в лог атак
+            const attackLog = document.getElementById('attack-log');
+            const attackItem = document.createElement('div');
+            attackItem.className = 'attack-item';
+            attackItem.innerHTML = `
+                <span class="attack-type">${randomAttack}</span> simulated from ${ip}
+                <br><small>${time} - Manual simulation</small>
+            `;
+            attackLog.prepend(attackItem);
+            
+            // Добавляем в таблицу трафика
+            const tableBody = document.getElementById('traffic-body');
+            
+            // Удаляем строку "ожидание" если она есть
+            if (tableBody.children.length === 1 && tableBody.children[0].getAttribute('colspan')) {
+                tableBody.innerHTML = '';
+            }
+            
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td style="padding:10px;">${time}</td>
+                <td style="padding:10px;"><code>${ip}</code></td>
+                <td style="padding:10px;"><span style="color:#ef4444; font-weight:bold">${randomAttack}</span></td>
+                <td style="padding:10px;"><span style="color:#f59e0b">Manual simulation</span></td>
+                <td style="padding:10px;">
+                    <button onclick="blockIP(this)" style="background:#ef4444; color:white; border:none; padding:5px 10px; border-radius:3px; cursor:pointer; margin-right:5px;">Block</button>
+                </td>
+            `;
+            tableBody.prepend(row);
+            
+            logDiag(`Simulated attack: ${randomAttack} from ${ip}`, 'info');
+        }
+
+        // Отправка тестовой атаки в ML
+        async function sendTestAttack() {
+            logDiag('Sending test attack to ML services...');
+            
+            const testPayload = {
+                "request": {
+                    "url": "http://localhost:3001/login",
+                    "method": "POST",
+                    "body": "' OR '1'='1' -- SQL Injection Test",
+                    "headers": {
+                        "User-Agent": "Orchid Test Bot",
+                        "Content-Type": "application/x-www-form-urlencoded"
+                    }
+                },
+                "metadata": {
+                    "source_ip": "192.168.1.100",
+                    "timestamp": new Date().toISOString(),
+                    "attack_type": "sqli"
+                }
+            };
+            
+            try {
+                // Пробуем отправить в Isolation Forest
+                const isoResponse = await fetch('http://localhost:8001/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(testPayload)
+                });
+                
+                if (isoResponse.ok) {
+                    const isoResult = await isoResponse.json();
+                    logDiag(`Isolation Forest detected: ${isoResult.is_anomaly ? 'ANOMALY' : 'NORMAL'}`, 'success');
+                    
+                    // Добавляем в таблицу
+                    addMLDetection('Isolation Forest', isoResult.is_anomaly, 'sqli');
+                }
+            } catch (error) {
+                logDiag(`Isolation Forest test failed: ${error.message}`, 'error');
+            }
+            
+            try {
+                // Пробуем отправить в Random Forest
+                const rfResponse = await fetch('http://localhost:8002/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(testPayload)
+                });
+                
+                if (rfResponse.ok) {
+                    const rfResult = await rfResponse.json();
+                    logDiag(`Random Forest detected: ${rfResult.prediction}`, 'success');
+                    
+                    // Добавляем в таблицу
+                    addMLDetection('Random Forest', rfResult.is_attack, rfResult.prediction);
+                }
+            } catch (error) {
+                logDiag(`Random Forest test failed: ${error.message}`, 'error');
+            }
+        }
+
+        function addMLDetection(service, isAttack, prediction) {
+            const time = new Date().toLocaleTimeString();
+            const tableBody = document.getElementById('traffic-body');
+            
+            if (tableBody.children.length === 1 && tableBody.children[0].getAttribute('colspan')) {
+                tableBody.innerHTML = '';
+            }
+            
+            const row = document.createElement('tr');
+            const attackColor = isAttack ? '#ef4444' : '#10b981';
+            const attackText = isAttack ? 'ATTACK' : 'NORMAL';
+            
+            row.innerHTML = `
+                <td style="padding:10px;">${time}</td>
+                <td style="padding:10px;"><code>192.168.1.100</code></td>
+                <td style="padding:10px;"><span style="color:${attackColor}; font-weight:bold">${prediction}</span></td>
+                <td style="padding:10px;"><span style="color:#3b82f6">${service}</span></td>
+                <td style="padding:10px;">
+                    <button onclick="blockIP(this)" style="background:${attackColor}; color:white; border:none; padding:5px 10px; border-radius:3px; cursor:pointer;">Block</button>
+                </td>
+            `;
+            tableBody.prepend(row);
+        }
+
+        function blockIP(button) {
+            const row = button.parentElement.parentElement;
+            const ip = row.children[1].textContent;
+            const attack = row.children[2].textContent;
+            
+            button.textContent = 'Blocked ✓';
+            button.style.background = '#16a34a';
+            button.disabled = true;
+            
+            logDiag(`Blocked IP: ${ip} for attack: ${attack}`, 'success');
+        }
+
+        function testMLServices() {
+            logDiag('Testing ML service endpoints...');
+            sendTestAttack();
+        }
+
+        function checkJuiceShop() {
+            logDiag('Checking Juice Shop availability...');
+            
+            fetch('http://localhost:3001')
+                .then(response => {
+                    if (response.ok) {
+                        logDiag('Juice Shop is online', 'success');
+                    } else {
+                        logDiag(`Juice Shop returned status: ${response.status}`, 'error');
+                    }
+                })
+                .catch(error => {
+                    logDiag(`Juice Shop unreachable: ${error.message}`, 'error');
+                });
+        }
+
+        function showConnectionInfo() {
+            const info = `
+Services Status:
+- Isolation Forest (8001): ${document.getElementById('iso-text').textContent}
+- Random Forest (8002): ${document.getElementById('rf-text').textContent}
+- Juice Shop (3001): Available
+- Admin Panel (3000): Running
+
+Connection Methods:
+${document.getElementById('iso-method').textContent ? '- Isolation: ' + document.getElementById('iso-method').textContent : ''}
+${document.getElementById('rf-method').textContent ? '- Random: ' + document.getElementById('rf-method').textContent : ''}
+
+Browser: ${navigator.userAgent.substring(0, 50)}
+Time: ${new Date().toLocaleTimeString()}
+            `;
+            
+            alert(info);
+            logDiag('Displayed connection info', 'info');
+        }
+
+        function clearLogs() {
+            if (confirm('Clear all logs?')) {
+                document.getElementById('diagnostic-log').innerHTML = '';
+                document.getElementById('attack-log').innerHTML = `
+                    <div class="attack-item">
+                        <span class="attack-type">LOGS CLEARED</span>
+                        <br><small>${new Date().toLocaleTimeString()}</small>
+                    </div>
+                `;
+                logDiag('All logs cleared', 'info');
+            }
+        }
+
+        function forceCheckServices() {
+            logDiag('Manual service check initiated...');
+            checkAllServices();
+        }
+
+        // Инициализация
+        logDiag('Orchid Security Dashboard initialized', 'success');
+        logDiag(`Browser: ${navigator.userAgent.substring(0, 30)}...`);
+        
+        // Запускаем проверку сервисов при загрузке
+        setTimeout(() => {
+            checkAllServices();
+        }, 1000);
+        
+        // Периодическая проверка
+        setInterval(checkAllServices, 30000); // Каждые 30 секунд
+    </script>
+</body>
+</html>

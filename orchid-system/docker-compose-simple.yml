@@ -1,0 +1,53 @@
+version: '3.8'
+services:
+  # ML Isolation Forest (простая версия)
+  ml-isolation:
+    image: python:3.11-slim
+    container_name: orchid-ml-isolation
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./ml-core:/app
+    working_dir: /app
+    command: python simple_service.py 8000 "Isolation Forest"
+    networks:
+      - orchid-network
+
+  # ML Random Forest (простая версия)
+  ml-random:
+    image: python:3.11-slim
+    container_name: orchid-ml-random
+    ports:
+      - "8002:8000"
+    volumes:
+      - ./ml-core:/app
+    working_dir: /app
+    command: python simple_service.py 8000 "Random Forest"
+    networks:
+      - orchid-network
+
+  # Admin Interface
+  admin:
+    image: nginx:alpine
+    container_name: orchid-admin
+    ports:
+      - "3000:80"
+    volumes:
+      - ./admin/html:/usr/share/nginx/html
+    networks:
+      - orchid-network
+
+  # Juice Shop
+  juice-shop:
+    image: bkimminich/juice-shop:latest
+    container_name: orchid-juice-shop
+    ports:
+      - "3001:3000"
+    environment:
+      - NODE_ENV=development
+    networks:
+      - orchid-network
+
+networks:
+  orchid-network:
+    driver: bridge
