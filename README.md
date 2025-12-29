@@ -247,6 +247,7 @@ chmod +x validate_system.sh
 ./validate_system.sh
 ```
 3. Все скрипты для тестирования
+
 3.1 Основные скрипты запуска
 ```bash
 # start_orchid.sh - запуск всей системы
